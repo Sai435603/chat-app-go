@@ -2,6 +2,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"sync"
@@ -48,10 +49,10 @@ func NewServer() *Server {
 	}
 }
 
-func handleWS(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 	upgrader := websocket.Upgrader{
-		ReadBufferSize:  512,
-		WriteBufferSize: 512,
+		ReadBufferSize:  1 << 10,
+		WriteBufferSize: 1 << 10,
 		CheckOrigin: func(r *http.Request) bool {
 			return true
 		},
@@ -62,9 +63,16 @@ func handleWS(w http.ResponseWriter, r *http.Request) {
 		log.Fatalln(err)
 		return
 	}
+
+	client := NewClient(conn)
+
+	//critical section
+	s.clients = append(s.clients, client)
 }
 
 func main() {
-	http.HandleFunc("/", handleWS)
+	s := NewServer()
+	http.HandleFunc("/", s.handleWS)
+	fmt.Println("server running at the port :", WSPort)
 	log.Fatal(http.ListenAndServe(WSPort, nil))
 }
